@@ -35,7 +35,7 @@ def check_article():
         if not webhook_id:
             return jsonify({"error": "Не удалось отправить в ApiMonster"}), 500
         
-        time.sleep(25)
+        time.sleep(45)
         
         result_url = f"https://api.apimonster.ru/webhooks/{webhook_id}/result"
         result_response = requests.get(result_url, timeout=10)
