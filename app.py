@@ -5,8 +5,6 @@ import time
 import os
 
 app = Flask(__name__)
-
-# РАЗРЕШАЕМ ВСЕ ЗАПРОСЫ С ЛЮБЫХ САЙТОВ
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 WEBHOOK_URL = "https://api.apimonster.ru/webhooks/153486/33962/11/b41f3f6799dab033147d65211151aee2/"
@@ -17,10 +15,9 @@ def home():
 
 @app.route('/check', methods=['GET', 'POST'])
 def check_article():
-    # Если пришёл GET-запрос — отвечаем, что всё ок
     if request.method == 'GET':
-        return jsonify({"status": "ok", "message": "Сервер готов принимать POST-запросы"}), 200
-    
+        return jsonify({"status": "ok"}), 200
+
     try:
         data = request.get_json()
         link = data.get('link')
@@ -35,15 +32,27 @@ def check_article():
         if not webhook_id:
             return jsonify({"error": "Не удалось отправить в ApiMonster"}), 500
         
-        time.sleep(60)
-        
+        # Пробуем получить результат 6 раз по 20 секунд = до 120 секунд
         result_url = f"https://api.apimonster.ru/webhooks/{webhook_id}/result"
-        result_response = requests.get(result_url, timeout=10)
+        result_data = None
         
-        if result_response.status_code == 200:
+        for attempt in range(6):
+            time.sleep(20)
+            try:
+                result_response = requests.get(result_url, timeout=10)
+                if result_response.status_code == 200:
+                    result_data = result_response.json()
+                    text = str(result_data).lower()
+                    # Если это не "обработка" — значит ответ готов
+                    if result_data and 'обработка' not in text and 'processing' not in text:
+                        break
+            except:
+                pass
+        
+        if result_data and 'обработка' not in str(result_data).lower():
             return jsonify({
                 "status": "success",
-                "result": result_response.json()
+                "result": result_data
             })
         else:
             return jsonify({
